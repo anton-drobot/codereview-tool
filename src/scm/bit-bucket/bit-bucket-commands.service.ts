@@ -1,5 +1,5 @@
-import * as fs from 'node:fs';
-import { setTimeout } from 'node:timers/promises';
+import * as fs from 'fs';
+import { setTimeout } from 'timers/promises';
 
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';

@@ -1,5 +1,5 @@
-import * as path from 'node:path';
-import { spawnSync } from 'node:child_process';
+import * as path from 'path';
+import { spawnSync } from 'child_process';
 
 import { Injectable } from '@nestjs/common';
 import { isObject } from 'lodash';
