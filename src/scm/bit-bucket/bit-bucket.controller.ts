@@ -44,6 +44,12 @@ export class BitBucketController {
                 pullRequestTitle,
                 pullRequestLink
             });
+        } else if (eventKey === 'pr:declined' || eventKey === 'pr:deleted' || eventKey === 'pr:merged') {
+            await this.commandsService.close({
+                project,
+                repository,
+                pullRequestId
+            });
         } else if (eventKey === 'pr:modified') {
             await this.commandsService.modified({
                 project,

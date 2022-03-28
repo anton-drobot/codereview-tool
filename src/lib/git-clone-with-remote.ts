@@ -13,47 +13,51 @@ interface IGitCloneWithRemoteParams {
 export async function gitCloneWithRemote(params: IGitCloneWithRemoteParams): Promise<string> {
     return new Promise((resolve: (directory: string) => void, reject: (reason: Error) => void) => {
         const hash = randomUUID();
-        const directory = path.join(process.cwd(), 'pull-requests', hash);
-        const gitDirectory = path.join(directory, '.git');
+        const baseDirectory = path.join(process.cwd(), 'pull-requests');
 
-        const clone = spawn('git', [
-            'clone',
-            '--branch',
-            params.pullRequestBranch,
-            '--recursive',
-            '--single-branch',
-            params.fromLink,
-            directory
-        ]);
+        fs.mkdir(baseDirectory, { recursive: true }, () => {
+            const directory = path.join(baseDirectory, hash);
+            const gitDirectory = path.join(directory, '.git');
 
-        clone.on('close', (cloneExitCode: number) => {
-            if (cloneExitCode === 0) {
-                const remoteAdd = spawn('git', ['--git-dir', gitDirectory, 'remote', 'add', 'upstream', params.toLink]);
+            const clone = spawn('git', [
+                'clone',
+                '--branch',
+                params.pullRequestBranch,
+                '--recursive',
+                '--single-branch',
+                params.fromLink,
+                directory
+            ]);
 
-                remoteAdd.on('close', (remoteAddExitCode: number) => {
-                    if (remoteAddExitCode === 0) {
-                        const fetch = spawn('git', ['--git-dir', gitDirectory, 'fetch', 'upstream', params.baseBranch]);
+            clone.on('close', (cloneExitCode: number) => {
+                if (cloneExitCode === 0) {
+                    const remoteAdd = spawn('git', ['--git-dir', gitDirectory, 'remote', 'add', 'upstream', params.toLink]);
 
-                        fetch.on('close', (fetchExitCode: number) => {
-                            if (fetchExitCode === 0) {
-                                resolve(directory);
-                            } else {
-                                fs.rm(directory, { recursive: true, force: true }, () => {
-                                    reject(new Error(`Fetch process exited with code ${fetchExitCode}`));
-                                });
-                            }
-                        });
-                    } else {
-                        fs.rm(directory, { recursive: true, force: true }, () => {
-                            reject(new Error(`Remote Add process exited with code ${remoteAddExitCode}`));
-                        });
-                    }
-                });
-            } else {
-                fs.rm(directory, { recursive: true, force: true }, () => {
-                    reject(new Error(`Clone process exited with code ${cloneExitCode}`));
-                });
-            }
-        });
+                    remoteAdd.on('close', (remoteAddExitCode: number) => {
+                        if (remoteAddExitCode === 0) {
+                            const fetch = spawn('git', ['--git-dir', gitDirectory, 'fetch', 'upstream', params.baseBranch]);
+
+                            fetch.on('close', (fetchExitCode: number) => {
+                                if (fetchExitCode === 0) {
+                                    resolve(directory);
+                                } else {
+                                    fs.rm(directory, { recursive: true, force: true }, () => {
+                                        reject(new Error(`Fetch process exited with code ${fetchExitCode}`));
+                                    });
+                                }
+                            });
+                        } else {
+                            fs.rm(directory, { recursive: true, force: true }, () => {
+                                reject(new Error(`Remote Add process exited with code ${remoteAddExitCode}`));
+                            });
+                        }
+                    });
+                } else {
+                    fs.rm(directory, { recursive: true, force: true }, () => {
+                        reject(new Error(`Clone process exited with code ${cloneExitCode}`));
+                    });
+                }
+            });
+        })
     });
 }

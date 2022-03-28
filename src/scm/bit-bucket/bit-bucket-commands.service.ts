@@ -10,6 +10,7 @@ import { Repository } from 'typeorm';
 import { DateTime } from 'luxon';
 
 import { ICreateCommandParams } from './interfaces/create-command-params.interface';
+import { ICloseCommandParams } from './interfaces/close-command-params.interface';
 import { IModifiedCommandParams } from './interfaces/modified-command-params.interface';
 import { IAssignCommandParams } from './interfaces/assign-command-params.interface';
 import { IAddCommandParams } from './interfaces/add-command-params.interface';
@@ -72,8 +73,8 @@ export class BitBucketCommandsService {
             pullRequestLink
         } = params;
 
-        const user = await this.getOrCreateUserByEmail(pullRequestAuthor);
         const gitRepository = await this.getOrCreateRepository(project, repository);
+        const user = await this.getOrCreateUserByEmail(pullRequestAuthor);
         const pullRequests = await this.getOrCreatePullRequest(
             gitRepository,
             user,
@@ -103,6 +104,39 @@ export class BitBucketCommandsService {
                 pullRequestBranch
             });
         }
+    }
+
+    public async close(params: ICloseCommandParams): Promise<void> {
+        const { project, repository, pullRequestId } = params;
+        const gitRepository = await this.getRepository(project, repository);
+
+        if (typeof gitRepository === 'undefined') {
+            await this.addCommentToPullRequest(
+                project,
+                repository,
+                pullRequestId,
+                'Репозиторий не зарегистрирован в системе.'
+            );
+
+            return;
+        }
+
+        const pullRequest = this.getPullRequest(gitRepository, pullRequestId);
+
+        if (typeof pullRequest === 'undefined') {
+            await this.addCommentToPullRequest(
+                gitRepository.project,
+                gitRepository.repository,
+                pullRequestId,
+                'Пулл-реквест не зарегистрирован в системе.'
+            );
+
+            return;
+        }
+
+        pullRequest.state = 'closed';
+        pullRequest.updatedAt = DateTime.now();
+        await this.pullRequestRepository.save(pullRequest);
     }
 
     public async modified(params: IModifiedCommandParams): Promise<void> {
@@ -851,10 +885,14 @@ export class BitBucketCommandsService {
             return existedGitRepository;
         }
 
+        const codeReviewConfig = await this.getCodeReviewConfig(project, repository);
+        await this.getUsers(codeReviewConfig.allowedUsers);
+
         const gitRepository = new GitRepository();
         gitRepository.type = 'bitbucket';
         gitRepository.project = project;
         gitRepository.repository = repository;
+        gitRepository.pullRequests = [];
 
         return this.gitRepositoryRepository.save(gitRepository);
     }
