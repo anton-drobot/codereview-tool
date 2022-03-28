@@ -28,7 +28,10 @@ import { ScmModule } from './scm/scm.module';
                 password: configService.get('DB_PASSWORD'),
                 database: configService.get('DB_DATABASE'),
                 entities: [User, TelegramUser, GitRepository, PullRequest, Review],
-                synchronize: false
+                synchronize: false,
+                ssl: configService.get('DB_SSL') ? {
+                    ca: configService.get('DB_SSL_CA')
+                } : undefined
             }),
             inject: [ConfigService]
         }),
