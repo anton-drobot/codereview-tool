@@ -13,10 +13,9 @@ interface IGitCloneWithRemoteParams {
 export async function gitCloneWithRemote(params: IGitCloneWithRemoteParams): Promise<string> {
     return new Promise((resolve: (directory: string) => void, reject: (reason: Error) => void) => {
         const hash = randomUUID();
-        const baseDirectory = path.join(process.cwd(), 'pull-requests');
+        const directory = path.join(process.cwd(), 'pull-requests', hash);
 
-        fs.mkdir(baseDirectory, { recursive: true }, () => {
-            const directory = path.join(baseDirectory, hash);
+        fs.mkdir(directory, { recursive: true }, () => {
             const gitDirectory = path.join(directory, '.git');
 
             const clone = spawn('git', [
