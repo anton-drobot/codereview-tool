@@ -15,7 +15,13 @@ export async function gitCloneWithRemote(params: IGitCloneWithRemoteParams): Pro
         const hash = randomUUID();
         const directory = path.join(process.cwd(), 'pull-requests', hash);
 
-        fs.mkdir(directory, { recursive: true }, () => {
+        fs.mkdir(directory, { recursive: true }, (error: Error | null) => {
+            if (error !== null) {
+                reject(error);
+
+                return;
+            }
+
             const gitDirectory = path.join(directory, '.git');
 
             const clone = spawn('git', [
