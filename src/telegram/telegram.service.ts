@@ -109,18 +109,26 @@ export class TelegramService {
     }
 
     public async botStart(params: IBotStartParams): Promise<void> {
-        const telegramUser = await this.telegramUserRepository.findOne({ telegramUserId: params.id });
+        const telegramUserById = await this.telegramUserRepository.findOne({ telegramUserId: params.id });
 
-        if (typeof telegramUser === 'undefined') {
-            const newTelegramUser = new TelegramUser();
-            newTelegramUser.telegramUserId = params.id;
-            newTelegramUser.username = params.username;
+        if (typeof telegramUserById === 'undefined') {
+            const telegramUserByUsername = await this.telegramUserRepository.findOne({ username: params.username });
 
-            await this.telegramUserRepository.save(newTelegramUser);
+            if (typeof telegramUserByUsername === 'undefined') {
+                const newTelegramUser = new TelegramUser();
+                newTelegramUser.telegramUserId = params.id;
+                newTelegramUser.username = params.username;
+
+                await this.telegramUserRepository.save(newTelegramUser);
+            } else {
+                telegramUserByUsername.telegramUserId = params.id;
+
+                await this.telegramUserRepository.save(telegramUserByUsername);
+            }
         } else {
-            telegramUser.username = params.username;
+            telegramUserById.username = params.username;
 
-            await this.telegramUserRepository.save(telegramUser);
+            await this.telegramUserRepository.save(telegramUserById);
         }
     }
 
