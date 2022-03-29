@@ -29,7 +29,19 @@ export async function gitCloneWithRemote(params: IGitCloneWithRemoteParams): Pro
                 directory
             ]);
 
+            const result = [];
+
+            clone.stdout.on('data', (data: Buffer) => {
+                result.push(`stdout: ${data.toString('utf-8')}`);
+            });
+
+            clone.stderr.on('data', (data: Buffer) => {
+                result.push(`stderr: ${data.toString('utf-8')}`);
+            });
+
             clone.on('close', (cloneExitCode: number) => {
+                console.log(result.join('\n'));
+
                 if (cloneExitCode === 0) {
                     const remoteAdd = spawn('git', ['--git-dir', gitDirectory, 'remote', 'add', 'upstream', params.toLink]);
 
