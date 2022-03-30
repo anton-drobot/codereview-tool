@@ -41,15 +41,19 @@ export class TelegramService {
     ) {}
 
     public async sendMessageToUser(username: string, message: string): Promise<void> {
-        await this.httpService.axiosRef.post(
-            `https://api.telegram.org/bot${this.configService.get<string>('TELEGRAM_BOT_TOKEN')}/sendMessage`,
-            {
-                chat_id: 4369863,
-                text: message,
-                parse_mode: 'html',
-                disable_web_page_preview: true
-            }
-        );
+        const telegramUser = await this.telegramUserRepository.findOne({ username });
+
+        if (typeof telegramUser !== 'undefined' && telegramUser.telegramUserId) {
+            await this.httpService.axiosRef.post(
+                `https://api.telegram.org/bot${this.configService.get<string>('TELEGRAM_BOT_TOKEN')}/sendMessage`,
+                {
+                    chat_id: telegramUser.telegramUserId,
+                    text: message,
+                    parse_mode: 'html',
+                    disable_web_page_preview: true
+                }
+            );
+        }
     }
 
     public async notifyStart(params: INotifyStartParams): Promise<void> {
