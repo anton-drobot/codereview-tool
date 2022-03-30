@@ -113,26 +113,28 @@ export class TelegramService {
     }
 
     public async botStart(params: IBotStartParams): Promise<void> {
-        const telegramUserById = await this.telegramUserRepository.findOne({ telegramUserId: params.id });
+        if (typeof params.username !== 'undefined') {
+            const telegramUserById = await this.telegramUserRepository.findOne({ telegramUserId: params.id });
 
-        if (typeof telegramUserById === 'undefined') {
-            const telegramUserByUsername = await this.telegramUserRepository.findOne({ username: params.username });
+            if (typeof telegramUserById === 'undefined') {
+                const telegramUserByUsername = await this.telegramUserRepository.findOne({ username: params.username });
 
-            if (typeof telegramUserByUsername === 'undefined') {
-                const newTelegramUser = new TelegramUser();
-                newTelegramUser.telegramUserId = params.id;
-                newTelegramUser.username = params.username;
+                if (typeof telegramUserByUsername === 'undefined') {
+                    const newTelegramUser = new TelegramUser();
+                    newTelegramUser.telegramUserId = params.id;
+                    newTelegramUser.username = params.username;
 
-                await this.telegramUserRepository.save(newTelegramUser);
+                    await this.telegramUserRepository.save(newTelegramUser);
+                } else {
+                    telegramUserByUsername.telegramUserId = params.id;
+
+                    await this.telegramUserRepository.save(telegramUserByUsername);
+                }
             } else {
-                telegramUserByUsername.telegramUserId = params.id;
+                telegramUserById.username = params.username;
 
-                await this.telegramUserRepository.save(telegramUserByUsername);
+                await this.telegramUserRepository.save(telegramUserById);
             }
-        } else {
-            telegramUserById.username = params.username;
-
-            await this.telegramUserRepository.save(telegramUserById);
         }
     }
 

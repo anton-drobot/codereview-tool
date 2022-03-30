@@ -5,7 +5,7 @@ export class TelegramWebhookChatDto {
     public id: number;
 
     @IsString()
-    public username: string;
+    public username?: string;
 
     @IsString()
     public type: 'private';
