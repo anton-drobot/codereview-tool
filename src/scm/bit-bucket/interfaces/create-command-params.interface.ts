@@ -8,4 +8,5 @@ export interface ICreateCommandParams {
     pullRequestBranch: string;
     pullRequestTitle: string;
     pullRequestLink: string;
+    reviewers: string[];
 }

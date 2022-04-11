@@ -3,6 +3,7 @@ import { Body, Controller, Headers, Post } from '@nestjs/common';
 import { WebhookDto } from './dto/webhook.dto';
 import { WebhookUserDto } from './dto/webhook-user.dto';
 import { WebhookLinkDto } from './dto/webhook-link.dto';
+import { WebhookParticipantDto } from './dto/webhook-participant.dto';
 
 import { BitBucketCommandsService } from './bit-bucket-commands.service';
 
@@ -29,6 +30,7 @@ export class BitBucketController {
         const pullRequestId = webhookDto.pullRequest.id;
         const pullRequestTitle = webhookDto.pullRequest.title;
         const pullRequestLink = webhookDto.pullRequest.links.self[0].href;
+        const reviewers = webhookDto.pullRequest.reviewers;
         const addedReviewers = webhookDto.addedReviewers;
         const removedReviewers = webhookDto.removedReviewers;
 
@@ -42,7 +44,8 @@ export class BitBucketController {
                 pullRequestAuthor,
                 pullRequestBranch,
                 pullRequestTitle,
-                pullRequestLink
+                pullRequestLink,
+                reviewers: reviewers.map((reviewer: WebhookParticipantDto) => reviewer.user.emailAddress)
             });
         } else if (eventKey === 'pr:declined' || eventKey === 'pr:deleted' || eventKey === 'pr:merged') {
             await this.commandsService.close({

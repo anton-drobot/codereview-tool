@@ -70,12 +70,13 @@ export class BitBucketCommandsService {
             pullRequestAuthor,
             pullRequestBranch,
             pullRequestTitle,
-            pullRequestLink
+            pullRequestLink,
+            reviewers
         } = params;
 
         const gitRepository = await this.getOrCreateRepository(project, repository);
         const user = await this.getOrCreateUserByEmail(pullRequestAuthor);
-        const pullRequests = await this.getOrCreatePullRequest(
+        const pullRequest = await this.getOrCreatePullRequest(
             gitRepository,
             user,
             pullRequestId,
@@ -83,17 +84,20 @@ export class BitBucketCommandsService {
             pullRequestLink
         );
 
-        if (pullRequests.state !== 'idle') {
-            pullRequests.title = pullRequestTitle;
-            pullRequests.state = 'idle';
-            pullRequests.updatedAt = DateTime.now();
+        if (pullRequest.state !== 'idle') {
+            pullRequest.title = pullRequestTitle;
+            pullRequest.state = 'idle';
+            pullRequest.updatedAt = DateTime.now();
 
-            await this.pullRequestRepository.save(pullRequests);
+            await this.pullRequestRepository.save(pullRequest);
         }
 
         const codeReviewConfig = await this.getCodeReviewConfig(gitRepository.project, gitRepository.repository);
 
-        if (codeReviewConfig.autoAssign) {
+        if (reviewers.length > 0) {
+            const users = await Promise.all(reviewers.map(async (email: string) => this.getOrCreateUserByEmail(email)));
+            await this.addReviewers(pullRequest, users);
+        } else if (codeReviewConfig.autoAssign) {
             await this.assign({
                 fromLink,
                 toLink,
