@@ -746,7 +746,7 @@ export class BitBucketCommandsService {
             return;
         }
 
-        if (pullRequest.state === 'idle' || pullRequest.state === 'closed') {
+        if (pullRequest.state === 'closed') {
             await this.addCommentToPullRequest(
                 gitRepository.project,
                 gitRepository.repository,
@@ -808,7 +808,7 @@ export class BitBucketCommandsService {
             return;
         }
 
-        if (pullRequest.state === 'idle' || pullRequest.state === 'closed') {
+        if (pullRequest.state === 'closed') {
             await this.addCommentToPullRequest(
                 gitRepository.project,
                 gitRepository.repository,
