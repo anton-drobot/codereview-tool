@@ -100,6 +100,13 @@ export class BitBucketController {
                 pullRequestId,
                 email: webhookDto.participant.user.emailAddress
             });
+        } else if (eventKey === 'pr:reviewer:unapproved') {
+            await this.commandsService.unapproved({
+                project,
+                repository,
+                pullRequestId,
+                email: webhookDto.participant.user.emailAddress
+            });
         } else if (eventKey === 'pr:comment:added') {
             const command = webhookDto.comment.text.trim().toLowerCase();
 

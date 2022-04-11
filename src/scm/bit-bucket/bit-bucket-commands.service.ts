@@ -22,6 +22,7 @@ import { IPingCommandParams } from './interfaces/ping-command-params.interface';
 import { IFixedCommandParams } from './interfaces/fixed-command-params.interface';
 import { IDeclinedCommandParams } from './interfaces/declined-command-params.interface';
 import { IApprovedCommandParams } from './interfaces/approved-command-params.interface';
+import { IUnapprovedCommandParams } from './interfaces/unapproved-command-params.interface';
 import { ICodeReviewConfig } from '../git-reviewers/interfaces/code-review-config.interface';
 import { ICodeReviewConfigAllowedUser } from '../git-reviewers/interfaces/code-review-config-allowed-user.interface';
 
@@ -169,21 +170,6 @@ export class BitBucketCommandsService {
             );
 
             return;
-        }
-
-        const codeReviewConfig = await this.getCodeReviewConfig(gitRepository.project, gitRepository.repository);
-
-        const isDeclined = pullRequest.reviews.some((review: Review) => review.state === 'declined');
-        const isApproved =
-            pullRequest.reviews.filter((review: Review) => review.state === 'approved').length >=
-            codeReviewConfig.approveCount;
-
-        if (isDeclined) {
-            pullRequest.state = 'declined';
-        } else if (isApproved) {
-            pullRequest.state = 'approved';
-        } else {
-            pullRequest.state = 'pending';
         }
 
         if (pullRequest.title !== pullRequestTitle) {
@@ -831,20 +817,76 @@ export class BitBucketCommandsService {
 
         const approves = pullRequest.reviews.filter((x: Review) => x.state === 'approved').length;
 
-        if (
-            codeReviewConfig.approveCount >= approves &&
-            codeReviewConfig.notification === 'telegram' &&
-            pullRequest.author.telegramUser
-        ) {
+        if (codeReviewConfig.approveCount >= approves) {
             pullRequest.state = 'approved';
             pullRequest.updatedAt = DateTime.now();
             await this.pullRequestRepository.save(pullRequest);
 
-            await this.telegramService.notifyApproved({
-                pullRequestTitle: pullRequest.title,
-                pullRequestLink: pullRequest.link,
-                username: pullRequest.author.telegramUser.username
-            });
+            if (codeReviewConfig.notification === 'telegram' && pullRequest.author.telegramUser) {
+                await this.telegramService.notifyApproved({
+                    pullRequestTitle: pullRequest.title,
+                    pullRequestLink: pullRequest.link,
+                    username: pullRequest.author.telegramUser.username
+                });
+            }
+        }
+    }
+
+    public async unapproved(params: IUnapprovedCommandParams): Promise<void> {
+        const { project, repository, pullRequestId, email } = params;
+        const gitRepository = await this.getRepository(project, repository);
+
+        if (typeof gitRepository === 'undefined') {
+            await this.addCommentToPullRequest(
+                project,
+                repository,
+                pullRequestId,
+                'Репозиторий не зарегистрирован в системе.'
+            );
+
+            return;
+        }
+
+        const pullRequest = this.getPullRequest(gitRepository, pullRequestId);
+
+        if (typeof pullRequest === 'undefined') {
+            await this.addCommentToPullRequest(
+                gitRepository.project,
+                gitRepository.repository,
+                pullRequestId,
+                'Пулл-реквест не зарегистрирован в системе.'
+            );
+
+            return;
+        }
+
+        if (pullRequest.state === 'closed') {
+            await this.addCommentToPullRequest(
+                gitRepository.project,
+                gitRepository.repository,
+                pullRequest.pullRequestId,
+                'Невозможно провести изменения в ревью, потому что пулл-реквест в некорректном статусе.'
+            );
+
+            return;
+        }
+
+        const codeReviewConfig = await this.getCodeReviewConfig(gitRepository.project, gitRepository.repository);
+
+        const review = pullRequest.reviews.find((x: Review) => normalizeEmail(x.user.email) === normalizeEmail(email));
+
+        if (typeof review !== 'undefined') {
+            review.state = 'pending';
+            review.updatedAt = DateTime.now();
+            await this.reviewRepository.save(review);
+        }
+
+        const approves = pullRequest.reviews.filter((x: Review) => x.state === 'approved').length;
+
+        if (approves < codeReviewConfig.approveCount && pullRequest.state === 'approved') {
+            pullRequest.state = 'pending';
+            pullRequest.updatedAt = DateTime.now();
+            await this.pullRequestRepository.save(pullRequest);
         }
     }
 
