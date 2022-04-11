@@ -5,9 +5,10 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { ConfigService } from '@nestjs/config';
 import { HttpService } from '@nestjs/axios';
-import { Cron } from '@nestjs/schedule';
+import { SchedulerRegistry } from '@nestjs/schedule';
 import { Repository } from 'typeorm';
 import { DateTime } from 'luxon';
+import { CronJob } from 'cron';
 
 import { ICreateCommandParams } from './interfaces/create-command-params.interface';
 import { ICloseCommandParams } from './interfaces/close-command-params.interface';
@@ -44,6 +45,7 @@ export class BitBucketCommandsService {
     public constructor(
         private configService: ConfigService,
         private httpService: HttpService,
+        private schedulerRegistry: SchedulerRegistry,
         private telegramService: TelegramService,
         private gitReviewersService: GitReviewersService,
         @InjectRepository(User)
@@ -56,7 +58,9 @@ export class BitBucketCommandsService {
         private readonly pullRequestRepository: Repository<PullRequest>,
         @InjectRepository(Review)
         private readonly reviewRepository: Repository<Review>
-    ) {}
+    ) {
+        this.addCronJob();
+    }
 
     /**
      * Создание пулл-реквеста.
@@ -1221,8 +1225,17 @@ export class BitBucketCommandsService {
         );
     }
 
-    @Cron('0 30 11 * * 1-5')
-    public async handleCron(): Promise<void> {
+    protected addCronJob(): void {
+        const job = new CronJob({
+            cronTime: '0 30 11 * * 1-5',
+            timeZone: this.configService.get<string>('TIMEZONE'),
+            onTick: this.handleCron
+        });
+        this.schedulerRegistry.addCronJob('ping', job);
+        job.start();
+    }
+
+    protected handleCron = async (): Promise<void> => {
         const reviews = await this.reviewRepository.find({
             relations: ['pullRequest', 'pullRequest.gitRepository', 'user', 'user.telegramUser'],
             where: {
